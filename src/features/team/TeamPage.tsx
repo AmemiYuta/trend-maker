@@ -1,146 +1,143 @@
-import { PlusCircle, Settings, Check, Lock, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Users, Crown, UserPlus, CheckCircle } from 'lucide-react'; // アイコン追加
+import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
+import { useWorkspace } from '../../hooks/useWorkspace';
 
-// モックデータ: チームメンバー
-const TEAM_MEMBERS = [
-  { id: 'm1', name: 'Creator_One', role: 'Owner', avatar: 'C', status: 'Active' },
-  { id: 'm2', name: 'Editor_Tanaka', role: 'Editor', avatar: 'E', status: 'Active' },
-  { id: 'm3', name: 'Manager_Sato', role: 'Viewer', avatar: 'M', status: 'Invited' },
-];
-
-// モックデータ: 料金プラン
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Free Plan',
-    price: '¥0',
-    features: ['1 SNSアカウント連携', '基本トレンド分析', '月10件の企画提案', '個人利用のみ'],
-    current: true
-  },
-  {
-    id: 'team',
-    name: 'Team Plan',
-    price: '¥2,980',
-    period: '/月',
-    features: ['無制限のSNSアカウント', 'チームメンバー招待 (5名まで)', '高度な視聴者分析', '投稿カレンダー共有', '優先サポート'],
-    recommended: true
-  }
-];
+interface TeamMember {
+  id: string;
+  user_id: string;
+  role: 'owner' | 'admin' | 'member';
+  joined_at: string;
+  email: string; // 直接取得できるようになるのでシンプルになります
+}
 
 export const TeamPage = () => {
-  return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-10">
+  const { team, loading: workspaceLoading } = useWorkspace();
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // メンバー一覧を取得
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (!team) return;
       
-      {/* 1. ヘッダーエリア */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+      try {
+        // ★修正: さきほど作った関数(RPC)経由でデータを取得
+        const { data, error } = await supabase
+          .rpc('get_team_members_with_email', { 
+            t_id: team.id 
+          });
+
+        if (error) throw error;
+        
+        // データ整形が不要になり、そのままセットできます
+        setMembers(data as TeamMember[]);
+      } catch (err) {
+        console.error('メンバー取得エラー:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (team) {
+      fetchMembers();
+    }
+  }, [team]);
+
+  if (workspaceLoading || loading) {
+    return <div className="p-8 text-center text-gray-500 font-bold">データを読み込み中...</div>;
+  }
+
+  const isFreePlan = team?.plan_type === 'free';
+
+  return (
+    <div className="p-8 max-w-5xl mx-auto space-y-8">
+      
+      {/* ヘッダーエリア */}
+      <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            チームメンバー
-            <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-              {TEAM_MEMBERS.length} / 5名
-            </span>
+          <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
+            <Users className="w-8 h-8 text-indigo-600" />
+            チームメンバー管理
           </h2>
-          <p className="text-gray-500 text-sm mt-1">
-            動画編集者やマネージャーを招待して、効率的に運用しましょう。
+          <p className="text-gray-500 font-bold mt-2">
+            プロジェクトを共有するメンバーを管理します
           </p>
         </div>
-        <Button variant="primary" className="shrink-0">
-          <PlusCircle className="w-4 h-4" /> メンバーを招待
-        </Button>
       </div>
 
-      {/* 2. メンバー一覧テーブル */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Name</th>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {TEAM_MEMBERS.map((member) => (
-              <tr key={member.id} className="hover:bg-gray-50/50 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
-                      {member.avatar}
-                    </div>
-                    <span className="font-bold text-gray-900 text-sm">{member.name}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-600">{member.role}</td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                    member.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {member.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-all">
-                    <Settings className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {/* ロックされた行（プラン制限の演出） */}
-            {[1, 2].map((i) => (
-              <tr key={i} className="bg-gray-50/50">
-                <td className="px-6 py-4" colSpan={4}>
-                  <div className="flex items-center justify-center gap-2 text-gray-400 py-2">
-                    <Lock className="w-4 h-4" />
-                    <span className="text-sm font-medium">追加枠 (Team Planで解放)</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Freeプランの場合の制限バナー */}
+      {isFreePlan && (
+        <div className="bg-gradient-to-r from-indigo-900 to-purple-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10">
+            <Crown className="w-40 h-40 transform rotate-12" />
+          </div>
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+                <Crown className="w-6 h-6 text-yellow-400" />
+                Teamプランにアップグレード
+              </h3>
+              <p className="text-indigo-200 text-sm mb-4">
+                現在はFreeプランのため、自分1人での利用に限られます。<br />
+                メンバーを追加して、チームで企画・構成を共有しましょう。
+              </p>
+              <div className="flex gap-4 text-xs font-bold text-indigo-100">
+                <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> メンバー無制限</span>
+                <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> SNS連携無制限</span>
+                <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> 権限管理</span>
+              </div>
+            </div>
+            <div className="shrink-0">
+              <Button variant="upgrade" size="lg">
+                プランを変更する
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* 3. プラン比較セクション */}
-      <div className="pt-8">
-        <h3 className="text-xl font-bold text-gray-900 mb-6 text-center">プランをアップグレード</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {PLANS.map((plan) => (
-            <div 
-              key={plan.id} 
-              className={`rounded-2xl p-6 border-2 flex flex-col relative transition-all duration-300 ${
-                plan.recommended 
-                  ? 'border-orange-200 bg-white shadow-xl scale-100 md:scale-105 z-10' 
-                  : 'border-gray-100 bg-white hover:border-gray-200'
-              }`}
-            >
-              {plan.recommended && (
-                <div className="absolute top-0 right-0 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-lg flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> RECOMMENDED
+      {/* メンバーリスト */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <h3 className="font-bold text-gray-700 flex items-center gap-2">
+            所属メンバー ({members.length}名)
+          </h3>
+          {!isFreePlan ? (
+            <Button size="sm" className="gap-1">
+              <UserPlus className="w-4 h-4" /> メンバーを招待
+            </Button>
+          ) : (
+            <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded">
+              メンバー追加はTeamプランのみ
+            </span>
+          )}
+        </div>
+
+        <div className="divide-y divide-gray-100">
+          {members.map((member) => (
+            <div key={member.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">
+                  {member.email?.slice(0, 2).toUpperCase()}
                 </div>
-              )}
-              <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
-              <div className="mt-2 mb-6 flex items-baseline gap-1">
-                <span className="text-3xl font-extrabold text-gray-900">{plan.price}</span>
-                {plan.period && <span className="text-gray-500 text-sm">{plan.period}</span>}
+                <div>
+                  <p className="font-bold text-gray-900 text-sm">{member.email}</p>
+                  <p className="text-xs text-gray-500">参加日: {new Date(member.joined_at).toLocaleDateString()}</p>
+                </div>
               </div>
               
-              <ul className="space-y-4 mb-8 flex-1">
-                {plan.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
-                    <Check className={`w-4 h-4 mt-0.5 shrink-0 ${plan.recommended ? 'text-orange-500' : 'text-gray-400'}`} />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              
-              <Button 
-                variant={plan.recommended ? 'upgrade' : 'secondary'} 
-                className="w-full"
-                disabled={plan.current}
-              >
-                {plan.current ? '現在のプラン' : '14日間無料で試す'}
-              </Button>
+              <div className="flex items-center gap-4">
+                <span className={`
+                  px-3 py-1 rounded-full text-xs font-bold border
+                  ${member.role === 'owner' 
+                    ? 'bg-purple-50 text-purple-700 border-purple-100' 
+                    : 'bg-gray-50 text-gray-600 border-gray-200'}
+                `}>
+                  {member.role === 'owner' ? 'オーナー' : 'メンバー'}
+                </span>
+              </div>
             </div>
           ))}
         </div>
