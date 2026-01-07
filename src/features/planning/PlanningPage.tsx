@@ -1,51 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // useEffectを追加
 import { Share2, ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { VideoStructureChart } from './components/VideoStructureChart';
 import type { Idea } from '../../types/idea';
-
-// モックデータ（本来はAPIから取得）
-const MOCK_IDEAS: Record<string, Idea[]> = {
-  gourmet: [
-    {
-      id: 1,
-      title: "【音で魅せる】コンビニ新作スイーツASMR",
-      tags: ["#コンビニ", "#新作", "#ASMR"],
-      difficulty: "易",
-      time: "30秒",
-      reason: "過去動画で「咀嚼音」がある箇所の維持率が高いため。",
-      structure: [
-        { time: "0-3秒", label: "フック", content: "パッケージを破る音 → 商品の超アップ", memo: "マイクを近づけて開封音を強調" },
-        { time: "3-15秒", label: "メイン", content: "スプーンを入れる断面 → 一口食べる表情", memo: "断面のクリーム感を自然光で" },
-        { time: "15-30秒", label: "結び", content: "星5つ！とテロップを出して完食", memo: "" }
-      ]
-    },
-    {
-      id: 2,
-      title: "30分待ちの行列店！並ぶ価値ある？",
-      tags: ["#行列グルメ", "#検証", "#ランチ"],
-      difficulty: "中",
-      time: "45秒",
-      reason: "週末はお出かけスポットの検索数が増加するため。",
-      structure: [
-        { time: "0-5秒", label: "導入", content: "行列の最後尾から店舗までの早送り", memo: "タイムラプス機能を使用" },
-        { time: "5-35秒", label: "実食", content: "看板メニューのシズル感たっぷりの映像", memo: "湯気や肉汁を逃さない" },
-        { time: "35-45秒", label: "結論", content: "「並ぶ価値あり！」と正直レビュー", memo: "" }
-      ]
-    }
-  ],
-  beauty: [],
-  vlog: []
-};
+import { supabase } from '../../lib/supabase'; // supabaseをインポート
 
 export const PlanningPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('gourmet');
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
+  
+  // ★重要: データを保存するステートを作成
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ★重要: 画面が表示されたらSupabaseからデータを取得
+  useEffect(() => {
+    const fetchIdeas = async () => {
+      setLoading(true);
+      // 'ideas'テーブルから、カテゴリが一致するものを取得
+      const { data, error } = await supabase
+        .from('ideas')
+        .select('*')
+        .eq('category', selectedCategory);
+
+      if (error) {
+        console.error('Error fetching data:', error);
+      } else {
+        setIdeas(data || []);
+      }
+      setLoading(false);
+    };
+
+    fetchIdeas();
+  }, [selectedCategory]); // カテゴリが変わるたびに再取得
 
   return (
     <div className="h-[calc(100vh-100px)] flex flex-col lg:flex-row gap-6">
       
-      {/* 左側: リスト表示エリア（詳細選択時はスマホで隠す） */}
+      {/* 左側: リスト表示エリア */}
       <div className={`${selectedIdea ? 'hidden lg:flex' : 'flex'} flex-col w-full lg:w-1/3 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm`}>
         <div className="p-4 border-b border-gray-100 bg-gray-50">
           <h3 className="font-bold text-gray-800 mb-3">ジャンル選択</h3>
@@ -66,7 +58,11 @@ export const PlanningPage = () => {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {MOCK_IDEAS[selectedCategory]?.map((idea) => (
+          {/* ローディング表示 */}
+          {loading && <p className="text-center text-gray-400 py-4">読み込み中...</p>}
+
+          {/* 取得したデータを表示 */}
+          {!loading && ideas.map((idea) => (
             <div 
               key={idea.id} 
               onClick={() => setSelectedIdea(idea)}
@@ -84,13 +80,14 @@ export const PlanningPage = () => {
               <p className="text-xs text-gray-500 line-clamp-2">{idea.reason}</p>
             </div>
           ))}
-          {MOCK_IDEAS[selectedCategory]?.length === 0 && (
+          
+          {!loading && ideas.length === 0 && (
             <p className="text-center text-gray-400 text-sm mt-10">企画が見つかりません</p>
           )}
         </div>
       </div>
 
-      {/* 右側: 詳細表示エリア */}
+      {/* 右側: 詳細表示エリア（変更なし） */}
       <div className={`${!selectedIdea ? 'hidden lg:flex' : 'flex'} flex-1 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex-col`}>
         {selectedIdea ? (
           <>
@@ -117,7 +114,6 @@ export const PlanningPage = () => {
              <div className="flex-1 overflow-y-auto p-6">
                <div className="max-w-3xl mx-auto">
                  <h3 className="font-bold text-gray-400 text-xs uppercase tracking-wider mb-2">AI構成案</h3>
-                 {/* コンポーネント化したチャートを表示 */}
                  <VideoStructureChart structures={selectedIdea.structure} />
                </div>
              </div>
