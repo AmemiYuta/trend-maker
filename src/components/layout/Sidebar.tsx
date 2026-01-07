@@ -10,10 +10,12 @@ import {
   User, 
   Moon, 
   X,
-  ChevronUp
+  ChevronUp,
+  Building2 // 追加: ワークスペース用アイコン
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { ProfileSettingsModal } from '../../features/settings/ProfileSettingsModal';
+import { WorkspaceSettingsModal } from '../../features/settings/WorkspaceSettingsModal'; // 追加
 
 interface SidebarProps {
   isOpen: boolean;
@@ -23,7 +25,11 @@ interface SidebarProps {
 export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
+  // モーダル開閉ステート
+  const [isProfileSettingsOpen, setIsProfileSettingsOpen] = useState(false);
+  const [isWorkspaceSettingsOpen, setIsWorkspaceSettingsOpen] = useState(false); // 追加
+
   const [userEmail, setUserEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
 
@@ -38,11 +44,11 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       }
     };
     getUser();
-  }, [isSettingsOpen]); // 設定変更後に再取得
+  }, [isProfileSettingsOpen]); // プロフィール変更後に再取得
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate('/'); // ログイン画面へ強制移動（App.tsxが検知してリダイレクトしますが念のため）
+    navigate('/');
   };
 
   const navItems = [
@@ -54,7 +60,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
   return (
     <>
-      {/* モバイル用オーバーレイ（背景を暗くする） */}
+      {/* モバイル用オーバーレイ */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
@@ -62,14 +68,22 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         />
       )}
 
-      {/* 設定モーダル */}
+      {/* --- モーダル定義 --- */}
+      
+      {/* プロフィール設定 */}
       <ProfileSettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)}
+        isOpen={isProfileSettingsOpen} 
+        onClose={() => setIsProfileSettingsOpen(false)}
         currentName={displayName}
       />
 
-      {/* サイドバー本体 */}
+      {/* ワークスペース設定（SNS連携など） */}
+      <WorkspaceSettingsModal
+        isOpen={isWorkspaceSettingsOpen}
+        onClose={() => setIsWorkspaceSettingsOpen(false)}
+      />
+
+      {/* --- サイドバー本体 --- */}
       <div className={`
         fixed md:static inset-y-0 left-0 z-50
         w-64 bg-white border-r border-gray-200 flex flex-col
@@ -78,12 +92,11 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         md:translate-x-0
       `}>
         
-        {/* ヘッダー部分 */}
+        {/* ヘッダー */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100">
           <h1 className="text-xl font-extrabold text-indigo-600 flex items-center gap-2">
             <span className="text-2xl">✨</span> Trend Maker
           </h1>
-          {/* モバイル用閉じるボタン */}
           <button onClick={onClose} className="md:hidden text-gray-400 hover:text-gray-600">
             <X className="w-6 h-6" />
           </button>
@@ -95,7 +108,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             <NavLink
               key={item.to}
               to={item.to}
-              onClick={() => onClose()} // モバイルならクリック後に閉じる
+              onClick={() => onClose()}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${
                   isActive
@@ -115,23 +128,39 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           
           {/* ポップアップメニュー */}
           {showUserMenu && (
-            <div className="absolute bottom-20 left-4 right-4 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-200">
-              <div className="p-3 border-b border-gray-50">
-                <p className="text-xs font-bold text-gray-400">アカウント設定</p>
+            <div className="absolute bottom-20 left-4 right-4 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-200 z-50">
+              <div className="p-3 border-b border-gray-50 bg-gray-50/50">
+                <p className="text-xs font-bold text-gray-400">設定・管理</p>
               </div>
+              
+              {/* ワークスペース設定（追加） */}
               <button 
-                onClick={() => { setIsSettingsOpen(true); setShowUserMenu(false); }}
+                onClick={() => { setIsWorkspaceSettingsOpen(true); setShowUserMenu(false); }}
+                className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+              >
+                <Building2 className="w-4 h-4 text-indigo-600" /> 
+                <span className="font-bold">ワークスペース設定</span>
+              </button>
+
+              {/* プロフィール設定 */}
+              <button 
+                onClick={() => { setIsProfileSettingsOpen(true); setShowUserMenu(false); }}
                 className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <Settings className="w-4 h-4" /> 表示名の変更
               </button>
+
+              {/* その他 */}
               <button 
                 onClick={() => alert('ダークモードは準備中です')}
                 className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <Moon className="w-4 h-4" /> システムカラー
               </button>
+              
               <div className="border-t border-gray-50 my-1"></div>
+              
+              {/* ログアウト */}
               <button 
                 onClick={handleLogout}
                 className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 font-bold"
@@ -144,7 +173,9 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           {/* ユーザーカード（クリックトリガー） */}
           <button 
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all border ${
+              showUserMenu ? 'bg-gray-50 border-gray-200' : 'border-transparent hover:bg-gray-50 hover:border-gray-200'
+            }`}
           >
             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold shrink-0">
               <User className="w-5 h-5" />
