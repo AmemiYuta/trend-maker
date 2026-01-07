@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Share2, ArrowLeft, PlusCircle } from 'lucide-react'; // PlusCircleを追加
+import { Share2, ArrowLeft, PlusCircle, Trash2 } from 'lucide-react'; // Trash2を追加
 import { Button } from '../../components/ui/Button';
 import { VideoStructureChart } from './components/VideoStructureChart';
 import type { Idea } from '../../types/idea';
@@ -30,6 +30,33 @@ export const PlanningPage = () => {
       setIdeas(data || []);
     }
     setLoading(false);
+  };
+
+  // ...fetchIdeas関数の下に追加
+  
+  const handleDelete = async (e: React.MouseEvent, id: number) => {
+    // カード自体のクリックイベント（詳細表示）を止める
+    e.stopPropagation();
+
+    // 確認ダイアログ
+    if (!window.confirm('本当にこの企画を削除しますか？')) return;
+
+    // Supabaseから削除
+    const { error } = await supabase
+      .from('ideas')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      alert('削除に失敗しました');
+    } else {
+      // 成功したらリストを再読み込み
+      // もし削除した企画を選択中だったら、選択を解除
+      if (selectedIdea?.id === id) {
+        setSelectedIdea(null);
+      }
+      fetchIdeas();
+    }
   };
 
   // 初回とカテゴリ変更時にデータ取得
@@ -87,12 +114,23 @@ export const PlanningPage = () => {
               <div 
                 key={idea.id} 
                 onClick={() => setSelectedIdea(idea)}
-                className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                // ★修正1: ここに 'relative group' を追加しないと、ボタンが綺麗に配置されません
+                className={`p-4 rounded-xl border transition-all cursor-pointer relative group ${
                   selectedIdea?.id === idea.id
                     ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200'
                     : 'bg-white border-gray-100 hover:border-gray-300 hover:shadow-sm'
                 }`}
               >
+                {/* ★修正2: このボタンを追加してください */}
+                <button
+                  onClick={(e) => handleDelete(e, idea.id)}
+                  className="absolute top-3 right-3 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                  title="削除する"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+
+                {/* 以下はそのまま */}
                 <div className="flex gap-2 mb-2">
                   <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">{idea.time}</span>
                   <span className="text-[10px] bg-gray-50 text-gray-600 px-2 py-0.5 rounded border border-gray-100">{idea.difficulty}</span>
