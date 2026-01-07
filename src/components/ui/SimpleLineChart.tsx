@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface SimpleLineChartProps {
   data: number[];
   labels: string[];

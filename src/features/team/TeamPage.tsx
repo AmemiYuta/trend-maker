@@ -1,4 +1,4 @@
-import { Users, PlusCircle, Settings, Check, Lock, Sparkles } from 'lucide-react';
+import { PlusCircle, Settings, Check, Lock, Sparkles } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 
 // モックデータ: チームメンバー
